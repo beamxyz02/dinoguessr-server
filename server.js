@@ -1,27 +1,17 @@
 #!/usr/bin/env node
 'use strict';
 
-/*
- * DinoGuessr Multiplayer relay server.
- *
- * Deliberately small: this only coordinates a 2-player lobby and relays
- * "round complete" events between the two players. The creature database
- * lives in the browser (same as before) — the server never sees dinosaur
- * data, it only passes along a seed + round index + guess/time numbers.
- * There's no per-frame game loop, because nothing here needs one.
- */
-
 const http = require('http');
 const crypto = require('crypto');
 const url = require('url');
 
 const PORT = Number(process.env.PORT || 3000);
 const MAX_PLAYERS = 2;
-const MAX_FRAME_BYTES = 16 * 1024;      // messages here are tiny; generous but capped
-const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I ambiguity
-const STALE_ROOM_MS = 2 * 60 * 60 * 1000; // sweep abandoned rooms after 2h
+const MAX_FRAME_BYTES = 16 * 1024;      
+const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
+const STALE_ROOM_MS = 2 * 60 * 60 * 1000;
 
-const rooms = new Map(); // code -> room
+const rooms = new Map(); 
 
 /* ---------------- helpers ---------------- */
 function id(bytes = 8) { return crypto.randomBytes(bytes).toString('hex'); }
@@ -100,8 +90,7 @@ function removeFromRoom(client) {
     } else {
       if (room.hostId === client.id) room.hostId = room.players[0].id;
       broadcast(room, { type: 'opponent_left', name: client.name });
-      send(client, { ...lobbyState(room), yourId: client.id });
-      broadcast(room, lobbyState(room), client);
+      broadcast(room, lobbyState(room));
     }
   }
   client.room = null;
@@ -111,17 +100,17 @@ function removeFromRoom(client) {
 function handleMessage(client, msg) {
   if (!msg || typeof msg !== 'object') return;
 
-  if (msg.type === 'create_lobby') {
+    if (msg.type === 'create_lobby') {
     if (client.room) removeFromRoom(client);
     client.name = safeName(msg.name);
     const code = makeRoomCode();
     const room = makeRoom(code, client);
     rooms.set(code, room);
     client.room = code;
-    send(client, lobbyState(room));
+    send(client, { ...lobbyState(room), yourId: client.id });
     return;
   }
-
+  
   if (msg.type === 'join_lobby') {
     const code = String(msg.code || '').trim().toUpperCase();
     const room = rooms.get(code);
@@ -132,18 +121,17 @@ function handleMessage(client, msg) {
     client.name = safeName(msg.name);
     room.players.push(client);
     client.room = code;
-    send(client, { ...lobbyState(room), yourId: client.id });
     broadcast(room, lobbyState(room), client);
+    send(client, { ...lobbyState(room), yourId: client.id });
     return;
   }
 
-  // everything past this point requires the client to already be in a room
   const room = client.room ? rooms.get(client.room) : null;
   if (!room) return;
 
   if (msg.type === 'start_game') {
-    if (client.id !== room.hostId) return;          // only the host starts the match
-    if (room.players.length < MAX_PLAYERS) return;   // wait for the second player
+    if (client.id !== room.hostId) return;          
+    if (room.players.length < MAX_PLAYERS) return; 
     if (room.started) return;
     room.started = true;
     room.totalRounds = [5, 10].includes(Number(msg.totalRounds)) ? Number(msg.totalRounds) : 5;
@@ -217,7 +205,6 @@ function decodeFrames(client, chunk) {
       const parsed = JSON.parse(payload.toString('utf8'));
       handleMessage(client, parsed);
     } catch (e) {
-      // malformed packet — ignore, don't crash the connection
     }
   }
   client.buffer = client.buffer.subarray(offset);
