@@ -225,11 +225,12 @@ server.on('upgrade', (req, socket) => {
   const key = req.headers['sec-websocket-key'];
   if (!key) { socket.destroy(); return; }
   const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
-  socket.write([
+socket.write([
     'HTTP/1.1 101 Switching Protocols',
     'Upgrade: websocket',
     'Connection: Upgrade',
     `Sec-WebSocket-Accept: ${accept}`,
+    'Sec-WebSocket-Version: 13',
     '', ''
   ].join('\r\n'));
 
