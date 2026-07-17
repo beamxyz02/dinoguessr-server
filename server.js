@@ -242,12 +242,6 @@ server.on('upgrade', (req, socket, head) => {
   socket.on('error', () => removeFromRoom(client));
 });
 
-  const client = { id: id(), socket, name: 'Player', room: null, buffer: null, lastSeen: Date.now() };
-  socket.on('data', chunk => decodeFrames(client, chunk));
-  socket.on('close', () => removeFromRoom(client));
-  socket.on('error', () => removeFromRoom(client));
-});
-
 /* ---------------- cleanup sweep ---------------- */
 setInterval(() => {
   const now = Date.now();
