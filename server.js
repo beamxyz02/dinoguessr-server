@@ -112,7 +112,7 @@ const httpServer = http.createServer((req, res) => {
   res.end('DinoGuessr multiplayer server is running.');
 });
 
-const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+const wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws) => {
   const client = { id: uid(), ws, name: 'Player', room: null };
