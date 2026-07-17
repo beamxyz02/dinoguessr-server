@@ -220,19 +220,27 @@ function handleHttp(req, res) {
 
 const server = http.createServer(handleHttp);
 
-server.on('upgrade', (req, socket) => {
+server.on('upgrade', (req, socket, head) => {
   if (url.parse(req.url).pathname !== '/ws') { socket.destroy(); return; }
   const key = req.headers['sec-websocket-key'];
   if (!key) { socket.destroy(); return; }
   const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
-socket.write([
-    'HTTP/1.1 101 Switching Protocols',
-    'Upgrade: websocket',
-    'Connection: Upgrade',
-    `Sec-WebSocket-Accept: ${accept}`,
-    'Sec-WebSocket-Version: 13',
-    '', ''
-  ].join('\r\n'));
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\n' +
+    'Upgrade: websocket\r\n' +
+    'Connection: Upgrade\r\n' +
+    'Sec-WebSocket-Accept: ' + accept + '\r\n' +
+    '\r\n'
+  );
+  socket.setTimeout(0);
+  socket.setNoDelay(true);
+  socket.setKeepAlive(true, 30000);
+
+  const client = { id: id(), socket, name: 'Player', room: null, buffer: null, lastSeen: Date.now() };
+  socket.on('data', chunk => decodeFrames(client, chunk));
+  socket.on('close', () => removeFromRoom(client));
+  socket.on('error', () => removeFromRoom(client));
+});
 
   const client = { id: id(), socket, name: 'Player', room: null, buffer: null, lastSeen: Date.now() };
   socket.on('data', chunk => decodeFrames(client, chunk));
